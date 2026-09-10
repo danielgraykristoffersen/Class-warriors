@@ -318,6 +318,24 @@
       } catch (e) {}
     }
 
+    // A per-browser id (not tied to any one class) so a reload can prove
+    // "this is the same browser" and reclaim its name immediately, instead
+    // of waiting for the server to notice the old connection is gone.
+    const DEVICE_ID_KEY = "classWarriorsDeviceId";
+    function getDeviceId() {
+      try {
+        let id = localStorage.getItem(DEVICE_ID_KEY);
+        if (!id) {
+          id = crypto.randomUUID();
+          localStorage.setItem(DEVICE_ID_KEY, id);
+        }
+        return id;
+      } catch (e) {
+        return "";
+      }
+    }
+    const deviceId = getDeviceId();
+
     const createName = document.getElementById("create-name");
     const createPassword = document.getElementById("create-password");
     const joinName = document.getElementById("join-name");
@@ -495,7 +513,7 @@
       joinError.textContent = "";
       const name = normalizeName(createName.value);
       const password = createPassword.value;
-      socket.emit("createClass", { name: createName.value, password }, (res) => {
+      socket.emit("createClass", { name: createName.value, password, deviceId }, (res) => {
         if (res.ok) {
           selfName = name;
           saveSession(res.code, name, password);
@@ -515,7 +533,7 @@
       }
       const name = normalizeName(joinName.value);
       const password = joinPassword.value;
-      socket.emit("joinClass", { code, name: joinName.value, password }, (res) => {
+      socket.emit("joinClass", { code, name: joinName.value, password, deviceId }, (res) => {
         if (res.ok) {
           joinPassword.value = "";
           selfName = name;
@@ -539,14 +557,13 @@
     });
 
     // ---- auto-rejoin after a page reload ----
-    // The old connection for this name may not have finished closing on the
-    // server yet (its "disconnect" hasn't been processed), so an unprotected
-    // name can briefly look "still in use" right after a reload. Retry a
-    // couple of times before giving up.
+    // The matching deviceId lets the server reclaim the name immediately in
+    // the common case. The retry loop is just a safety net for the rare
+    // case a genuinely different, already-active session holds the name.
     function attemptAutoRejoin(session, retriesLeft) {
       socket.emit(
         "joinClass",
-        { code: session.code, name: session.name, password: session.password },
+        { code: session.code, name: session.name, password: session.password, deviceId },
         (res) => {
           if (res.ok) {
             selfName = normalizeName(session.name);

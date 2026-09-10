@@ -99,9 +99,10 @@ setInterval(() => {
 }, 30 * 60 * 1000);
 
 io.on("connection", (socket) => {
-  socket.on("createClass", ({ name, password }, ack) => {
+  socket.on("createClass", ({ name, password, deviceId }, ack) => {
     name = (name || "").trim().slice(0, 30) || "Anonymous";
     password = (password || "").trim().slice(0, 100);
+    deviceId = (deviceId || "").trim().slice(0, 100) || null;
     leaveCurrentClass(socket);
 
     const code = generateCode();
@@ -109,6 +110,7 @@ io.on("connection", (socket) => {
     cls.members.set(name, {
       ...(password ? hashPassword(password) : { salt: null, hash: null }),
       socketId: socket.id,
+      deviceId,
       ...randomSpawn(),
     });
     classes.set(code, cls);
@@ -120,10 +122,11 @@ io.on("connection", (socket) => {
     ack({ ok: true, code, members: connectedMembers(cls), world: { width: WORLD_WIDTH, height: WORLD_HEIGHT, radius: BLOB_RADIUS } });
   });
 
-  socket.on("joinClass", ({ code, name, password }, ack) => {
+  socket.on("joinClass", ({ code, name, password, deviceId }, ack) => {
     code = (code || "").trim().toUpperCase();
     name = (name || "").trim().slice(0, 30) || "Anonymous";
     password = (password || "").trim().slice(0, 100);
+    deviceId = (deviceId || "").trim().slice(0, 100) || null;
 
     const cls = classes.get(code);
     if (!cls) {
@@ -134,6 +137,12 @@ io.on("connection", (socket) => {
     const existing = cls.members.get(name);
     if (existing) {
       const connectedNow = existing.socketId && io.sockets.sockets.has(existing.socketId);
+      // A page reload doesn't always get a chance to cleanly close the old
+      // WebSocket, so the server can lag behind on noticing it's gone. A
+      // matching deviceId (a random id this browser persists locally) is
+      // treated as proof it's the same browser reconnecting, so it can
+      // reclaim the name immediately instead of waiting on that timeout.
+      const sameDevice = deviceId && existing.deviceId && deviceId === existing.deviceId;
 
       if (existing.hash) {
         if (!password || !verifyPassword(password, existing)) {
@@ -147,13 +156,15 @@ io.on("connection", (socket) => {
         if (connectedNow && existing.socketId !== socket.id) {
           kickSocket(existing.socketId, "You joined this class from another tab or device.");
         }
-      } else if (connectedNow) {
+      } else if (connectedNow && !sameDevice) {
         ack({
           ok: false,
           code: "NAME_IN_USE",
           error: "Someone is already using that name in this class right now. Choose a different name.",
         });
         return;
+      } else if (connectedNow) {
+        kickSocket(existing.socketId, "You reconnected in another tab or window.");
       } else if (password) {
         // Reclaiming an unprotected, currently-empty name: let them protect it going forward.
         Object.assign(existing, hashPassword(password));
@@ -161,12 +172,14 @@ io.on("connection", (socket) => {
 
       leaveCurrentClass(socket);
       existing.socketId = socket.id;
+      existing.deviceId = deviceId || existing.deviceId;
       if (typeof existing.x !== "number") Object.assign(existing, randomSpawn());
     } else {
       leaveCurrentClass(socket);
       cls.members.set(name, {
         ...(password ? hashPassword(password) : { salt: null, hash: null }),
         socketId: socket.id,
+        deviceId,
         ...randomSpawn(),
       });
     }
