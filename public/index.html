@@ -539,22 +539,32 @@
     });
 
     // ---- auto-rejoin after a page reload ----
-    const savedSession = loadSession();
-    if (savedSession && savedSession.code && savedSession.name) {
-      screenLoading.classList.remove("hidden");
+    // The old connection for this name may not have finished closing on the
+    // server yet (its "disconnect" hasn't been processed), so an unprotected
+    // name can briefly look "still in use" right after a reload. Retry a
+    // couple of times before giving up.
+    function attemptAutoRejoin(session, retriesLeft) {
       socket.emit(
         "joinClass",
-        { code: savedSession.code, name: savedSession.name, password: savedSession.password },
+        { code: session.code, name: session.name, password: session.password },
         (res) => {
           if (res.ok) {
-            selfName = normalizeName(savedSession.name);
+            selfName = normalizeName(session.name);
             showClassScreen(res.code, res.members, res.world);
+          } else if (res.code === "NAME_IN_USE" && retriesLeft > 0) {
+            setTimeout(() => attemptAutoRejoin(session, retriesLeft - 1), 600);
           } else {
             clearSession();
             showHomeScreen();
           }
         }
       );
+    }
+
+    const savedSession = loadSession();
+    if (savedSession && savedSession.code && savedSession.name) {
+      screenLoading.classList.remove("hidden");
+      attemptAutoRejoin(savedSession, 5);
     } else {
       screenHome.classList.remove("hidden");
     }

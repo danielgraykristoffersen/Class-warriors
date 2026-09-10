@@ -139,6 +139,7 @@ io.on("connection", (socket) => {
         if (!password || !verifyPassword(password, existing)) {
           ack({
             ok: false,
+            code: "WRONG_PASSWORD",
             error: "That name is password-protected in this class. Enter the correct password, or use a different name.",
           });
           return;
@@ -149,6 +150,7 @@ io.on("connection", (socket) => {
       } else if (connectedNow) {
         ack({
           ok: false,
+          code: "NAME_IN_USE",
           error: "Someone is already using that name in this class right now. Choose a different name.",
         });
         return;
