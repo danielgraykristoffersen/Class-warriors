@@ -243,7 +243,11 @@
 </head>
 <body>
 
-  <div class="card" id="screen-home">
+  <div class="card hidden" id="screen-loading">
+    <p class="sub" style="margin:0;">Reconnecting to your class…</p>
+  </div>
+
+  <div class="card hidden" id="screen-home">
     <h1>Class Warriors</h1>
     <p class="sub">Open a class and share the code, or join one your friend opened.</p>
 
@@ -286,8 +290,33 @@
   <script>
     const socket = io({ transports: ["websocket"] });
 
+    const screenLoading = document.getElementById("screen-loading");
     const screenHome = document.getElementById("screen-home");
     const screenClass = document.getElementById("screen-class");
+
+    // ---- session persistence (survive page reloads) ----
+    const SESSION_KEY = "classWarriorsSession";
+
+    function saveSession(code, name, password) {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ code, name, password: password || "" }));
+      } catch (e) {}
+    }
+
+    function loadSession() {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function clearSession() {
+      try {
+        localStorage.removeItem(SESSION_KEY);
+      } catch (e) {}
+    }
 
     const createName = document.getElementById("create-name");
     const createPassword = document.getElementById("create-password");
@@ -442,6 +471,7 @@
 
     // ---- screens ----
     function showClassScreen(code, members, worldCfg) {
+      screenLoading.classList.add("hidden");
       screenHome.classList.add("hidden");
       screenClass.classList.remove("hidden");
       classCodeEl.textContent = code;
@@ -452,6 +482,7 @@
     }
 
     function showHomeScreen(message) {
+      screenLoading.classList.add("hidden");
       screenClass.classList.add("hidden");
       screenHome.classList.remove("hidden");
       joinError.textContent = message || "";
@@ -463,18 +494,16 @@
     document.getElementById("btn-create").addEventListener("click", () => {
       joinError.textContent = "";
       const name = normalizeName(createName.value);
-      socket.emit(
-        "createClass",
-        { name: createName.value, password: createPassword.value },
-        (res) => {
-          if (res.ok) {
-            selfName = name;
-            showClassScreen(res.code, res.members, res.world);
-          } else {
-            joinError.textContent = res.error || "Couldn't open a class.";
-          }
+      const password = createPassword.value;
+      socket.emit("createClass", { name: createName.value, password }, (res) => {
+        if (res.ok) {
+          selfName = name;
+          saveSession(res.code, name, password);
+          showClassScreen(res.code, res.members, res.world);
+        } else {
+          joinError.textContent = res.error || "Couldn't open a class.";
         }
-      );
+      });
     });
 
     document.getElementById("btn-join").addEventListener("click", () => {
@@ -485,29 +514,50 @@
         return;
       }
       const name = normalizeName(joinName.value);
-      socket.emit(
-        "joinClass",
-        { code, name: joinName.value, password: joinPassword.value },
-        (res) => {
-          if (res.ok) {
-            joinPassword.value = "";
-            selfName = name;
-            showClassScreen(res.code, res.members, res.world);
-          } else {
-            joinError.textContent = res.error || "Couldn't join that class.";
-          }
+      const password = joinPassword.value;
+      socket.emit("joinClass", { code, name: joinName.value, password }, (res) => {
+        if (res.ok) {
+          joinPassword.value = "";
+          selfName = name;
+          saveSession(res.code, name, password);
+          showClassScreen(res.code, res.members, res.world);
+        } else {
+          joinError.textContent = res.error || "Couldn't join that class.";
         }
-      );
+      });
     });
 
     socket.on("kicked", (reason) => {
+      clearSession();
       showHomeScreen(reason || "You were disconnected from the class.");
     });
 
     document.getElementById("btn-leave").addEventListener("click", () => {
       socket.emit("leaveClass");
+      clearSession();
       showHomeScreen();
     });
+
+    // ---- auto-rejoin after a page reload ----
+    const savedSession = loadSession();
+    if (savedSession && savedSession.code && savedSession.name) {
+      screenLoading.classList.remove("hidden");
+      socket.emit(
+        "joinClass",
+        { code: savedSession.code, name: savedSession.name, password: savedSession.password },
+        (res) => {
+          if (res.ok) {
+            selfName = normalizeName(savedSession.name);
+            showClassScreen(res.code, res.members, res.world);
+          } else {
+            clearSession();
+            showHomeScreen();
+          }
+        }
+      );
+    } else {
+      screenHome.classList.remove("hidden");
+    }
 
     classCodeEl.addEventListener("click", () => {
       navigator.clipboard.writeText(classCodeEl.textContent).then(() => {
