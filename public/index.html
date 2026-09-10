@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Class</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --text: #1c1e26;
+    --muted: #666b7a;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --border: #e3e5ec;
+    --danger: #dc2626;
+    --lobby-floor: #eceef4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151c;
+      --card: #1e2029;
+      --text: #eceef4;
+      --muted: #9aa0b4;
+      --accent: #6366f1;
+      --accent-hover: #7476f3;
+      --border: #2c2f3a;
+      --danger: #f87171;
+      --lobby-floor: #15161d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+  }
+  #screen-class.card {
+    max-width: 800px;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  p.sub {
+    color: var(--muted);
+    margin: 0 0 24px;
+    font-size: 14px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+  input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  input[type="text"].code-input {
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 600;
+  }
+  button {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  button.secondary:hover { background: var(--border); }
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 20px 0;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .error {
+    color: var(--danger);
+    font-size: 13px;
+    margin: -8px 0 14px;
+    min-height: 16px;
+  }
+  .hidden { display: none !important; }
+
+  /* --- in-class top bar --- */
+  .lobby-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .code-display .label {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .code-display .code {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--accent);
+    margin: 2px 0;
+    cursor: pointer;
+  }
+  .copy-hint {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .lobby-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .count {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .top-btn {
+    width: auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    margin-bottom: 0;
+  }
+
+  /* --- lobby --- */
+  .lobby {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1000 / 600;
+    background:
+      linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 40px 40px,
+      var(--lobby-floor);
+    background-blend-mode: normal;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .lobby-hint {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0.85;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .lobby-hint kbd {
+    display: inline-block;
+    background: rgba(128,128,128,0.25);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-right: 2px;
+    font-family: inherit;
+    font-size: 11px;
+  }
+  .blob {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .blob:not(.self) {
+    transition: left 0.1s linear, top 0.1s linear;
+  }
+  .blob-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(0,0,0,0.45);
+    padding: 2px 7px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .blob-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.55);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  }
+  .blob.self .blob-circle {
+    box-shadow: 0 0 0 3px var(--accent), 0 2px 8px rgba(0,0,0,0.35);
+  }
+  .blob.self .blob-name {
+    background: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+  <div class="card" id="screen-home">
+    <h1>Class</h1>
+    <p class="sub">Open a class and share the code, or join one your friend opened.</p>
+
+    <label for="create-name">Your name</label>
+    <input id="create-name" type="text" placeholder="e.g. Alex" maxlength="30" />
+    <label for="create-password">Password (optional)</label>
+    <input id="create-password" type="password" placeholder="Protects your name in this class" maxlength="100" />
+    <button id="btn-create">Open a class</button>
+
+    <div class="divider">or</div>
+
+    <label for="join-name">Your name</label>
+    <input id="join-name" type="text" placeholder="e.g. Alex" maxlength="30" />
+    <label for="join-code">Class code</label>
+    <input id="join-code" class="code-input" type="text" placeholder="ABCDE" maxlength="5" />
+    <label for="join-password">Password (optional)</label>
+    <input id="join-password" type="password" placeholder="Only if you set one before" maxlength="100" />
+    <div class="error" id="join-error"></div>
+    <button id="btn-join" class="secondary">Join class</button>
+  </div>
+
+  <div class="card hidden" id="screen-class">
+    <div class="lobby-header">
+      <div class="code-display">
+        <div class="label">Class code — share this with your friend</div>
+        <div class="code" id="class-code">-----</div>
+        <div class="copy-hint" id="copy-hint">Click the code to copy</div>
+      </div>
+      <div class="lobby-header-right">
+        <div class="count" id="member-count">0 people in this class</div>
+        <button class="secondary top-btn" id="btn-leave">Leave class</button>
+      </div>
+    </div>
+    <div class="lobby" id="lobby">
+      <div class="lobby-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move</div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const screenHome = document.getElementById("screen-home");
+    const screenClass = document.getElementById("screen-class");
+
+    const createName = document.getElementById("create-name");
+    const createPassword = document.getElementById("create-password");
+    const joinName = document.getElementById("join-name");
+    const joinCode = document.getElementById("join-code");
+    const joinPassword = document.getElementById("join-password");
+    const joinError = document.getElementById("join-error");
+
+    const classCodeEl = document.getElementById("class-code");
+    const copyHint = document.getElementById("copy-hint");
+    const memberCountEl = document.getElementById("member-count");
+    const lobbyEl = document.getElementById("lobby");
+
+    // ---- lobby / blob state ----
+    let world = { width: 1000, height: 600, radius: 24 };
+    let selfName = null;
+    const players = new Map(); // name -> { x, y, el }
+    const keys = { w: false, a: false, s: false, d: false };
+    const SPEED = 260; // world units per second
+    const MOVE_SEND_INTERVAL = 50; // ms
+    let lastMoveSent = 0;
+    let lastFrameTime = null;
+    let rafId = null;
+
+    function normalizeName(v) {
+      const t = (v || "").trim().slice(0, 30);
+      return t || "Anonymous";
+    }
+
+    function clamp(v, min, max) {
+      return Math.min(Math.max(v, min), max);
+    }
+
+    function colorForName(name) {
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+      return `hsl(${hash % 360}, 65%, 55%)`;
+    }
+
+    function positionBlob(el, x, y) {
+      el.style.left = (x / world.width) * 100 + "%";
+      el.style.top = (y / world.height) * 100 + "%";
+    }
+
+    function createBlobEl(name) {
+      const el = document.createElement("div");
+      el.className = "blob";
+      const nameEl = document.createElement("span");
+      nameEl.className = "blob-name";
+      nameEl.textContent = name;
+      const circleEl = document.createElement("span");
+      circleEl.className = "blob-circle";
+      circleEl.style.background = colorForName(name);
+      el.appendChild(nameEl);
+      el.appendChild(circleEl);
+      lobbyEl.appendChild(el);
+      return el;
+    }
+
+    function clearLobby() {
+      for (const [, p] of players) p.el.remove();
+      players.clear();
+    }
+
+    function syncMembers(members) {
+      const seen = new Set();
+      for (const m of members) {
+        seen.add(m.name);
+        let p = players.get(m.name);
+        if (!p) {
+          const el = createBlobEl(m.name);
+          if (m.name === selfName) el.classList.add("self");
+          p = { x: m.x, y: m.y, el };
+          players.set(m.name, p);
+          positionBlob(el, p.x, p.y);
+        } else if (m.name !== selfName) {
+          p.x = m.x;
+          p.y = m.y;
+          positionBlob(p.el, p.x, p.y);
+        }
+      }
+      for (const [name, p] of players) {
+        if (!seen.has(name)) {
+          p.el.remove();
+          players.delete(name);
+        }
+      }
+      memberCountEl.textContent = `${members.length} ${members.length === 1 ? "person" : "people"} in this class`;
+    }
+
+    function step(timestamp) {
+      if (lastFrameTime == null) lastFrameTime = timestamp;
+      const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
+      lastFrameTime = timestamp;
+
+      const self = players.get(selfName);
+      if (self) {
+        let dx = 0, dy = 0;
+        if (keys.w) dy -= 1;
+        if (keys.s) dy += 1;
+        if (keys.a) dx -= 1;
+        if (keys.d) dx += 1;
+        if (dx || dy) {
+          const len = Math.hypot(dx, dy);
+          dx /= len;
+          dy /= len;
+          self.x = clamp(self.x + dx * SPEED * dt, world.radius, world.width - world.radius);
+          self.y = clamp(self.y + dy * SPEED * dt, world.radius, world.height - world.radius);
+          positionBlob(self.el, self.x, self.y);
+
+          const now = performance.now();
+          if (now - lastMoveSent > MOVE_SEND_INTERVAL) {
+            lastMoveSent = now;
+            socket.emit("move", { x: self.x, y: self.y });
+          }
+        }
+      }
+      rafId = requestAnimationFrame(step);
+    }
+
+    function startLobbyLoop() {
+      if (rafId) return;
+      lastFrameTime = null;
+      rafId = requestAnimationFrame(step);
+    }
+
+    function stopLobbyLoop() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    function setKey(k, val) {
+      if (k === "w" || k === "arrowup") keys.w = val;
+      else if (k === "s" || k === "arrowdown") keys.s = val;
+      else if (k === "a" || k === "arrowleft") keys.a = val;
+      else if (k === "d" || k === "arrowright") keys.d = val;
+      else return;
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (screenClass.classList.contains("hidden")) return;
+      const k = e.key.toLowerCase();
+      if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
+        e.preventDefault();
+        setKey(k, true);
+      }
+    });
+    window.addEventListener("keyup", (e) => setKey(e.key.toLowerCase(), false));
+    window.addEventListener("blur", () => {
+      keys.w = keys.a = keys.s = keys.d = false;
+    });
+
+    // ---- screens ----
+    function showClassScreen(code, members, worldCfg) {
+      screenHome.classList.add("hidden");
+      screenClass.classList.remove("hidden");
+      classCodeEl.textContent = code;
+      if (worldCfg) world = worldCfg;
+      clearLobby();
+      syncMembers(members);
+      startLobbyLoop();
+    }
+
+    function showHomeScreen(message) {
+      screenClass.classList.add("hidden");
+      screenHome.classList.remove("hidden");
+      joinError.textContent = message || "";
+      stopLobbyLoop();
+      clearLobby();
+      selfName = null;
+    }
+
+    document.getElementById("btn-create").addEventListener("click", () => {
+      joinError.textContent = "";
+      const name = normalizeName(createName.value);
+      socket.emit(
+        "createClass",
+        { name: createName.value, password: createPassword.value },
+        (res) => {
+          if (res.ok) {
+            selfName = name;
+            showClassScreen(res.code, res.members, res.world);
+          } else {
+            joinError.textContent = res.error || "Couldn't open a class.";
+          }
+        }
+      );
+    });
+
+    document.getElementById("btn-join").addEventListener("click", () => {
+      joinError.textContent = "";
+      const code = joinCode.value.trim().toUpperCase();
+      if (!code) {
+        joinError.textContent = "Enter a class code.";
+        return;
+      }
+      const name = normalizeName(joinName.value);
+      socket.emit(
+        "joinClass",
+        { code, name: joinName.value, password: joinPassword.value },
+        (res) => {
+          if (res.ok) {
+            joinPassword.value = "";
+            selfName = name;
+            showClassScreen(res.code, res.members, res.world);
+          } else {
+            joinError.textContent = res.error || "Couldn't join that class.";
+          }
+        }
+      );
+    });
+
+    socket.on("kicked", (reason) => {
+      showHomeScreen(reason || "You were disconnected from the class.");
+    });
+
+    document.getElementById("btn-leave").addEventListener("click", () => {
+      socket.emit("leaveClass");
+      showHomeScreen();
+    });
+
+    classCodeEl.addEventListener("click", () => {
+      navigator.clipboard.writeText(classCodeEl.textContent).then(() => {
+        copyHint.textContent = "Copied!";
+        setTimeout(() => (copyHint.textContent = "Click the code to copy"), 1500);
+      });
+    });
+
+    joinCode.addEventListener("input", () => {
+      joinCode.value = joinCode.value.toUpperCase();
+    });
+
+    socket.on("members", (members) => {
+      syncMembers(members);
+    });
+
+    socket.on("playerMoved", ({ name, x, y }) => {
+      if (name === selfName) return;
+      const p = players.get(name);
+      if (!p) return;
+      p.x = x;
+      p.y = y;
+      positionBlob(p.el, x, y);
+    });
+  </script>
+</body>
+</html>
