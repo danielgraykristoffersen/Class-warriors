@@ -211,7 +211,7 @@
     pointer-events: none;
   }
   .blob:not(.self) {
-    transition: left 0.1s linear, top 0.1s linear;
+    transition: left 0.05s linear, top 0.05s linear;
   }
   .blob-name {
     font-size: 12px;
@@ -284,7 +284,7 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    const socket = io({ transports: ["websocket"] });
 
     const screenHome = document.getElementById("screen-home");
     const screenClass = document.getElementById("screen-class");
@@ -307,7 +307,7 @@
     const players = new Map(); // name -> { x, y, el }
     const keys = { w: false, a: false, s: false, d: false };
     const SPEED = 260; // world units per second
-    const MOVE_SEND_INTERVAL = 50; // ms
+    const MOVE_SEND_INTERVAL = 33; // ms (~30 updates/sec)
     let lastMoveSent = 0;
     let lastFrameTime = null;
     let rafId = null;
