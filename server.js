@@ -19,7 +19,7 @@ const WORLD_WIDTH = 1000;
 const WORLD_HEIGHT = 600;
 const BLOB_RADIUS = 24;
 
-// code -> { members: Map(name -> { salt, hash, socketId, x, y }), lastActivity }
+// code -> { members: Map(name -> { salt, hash, socketId, deviceId, x, y }), lastActivity, permanent, classPassword }
 const classes = new Map();
 
 function generateCode() {
@@ -92,21 +92,27 @@ function leaveCurrentClass(socket) {
 setInterval(() => {
   const now = Date.now();
   for (const [code, cls] of classes) {
-    if (connectedMembers(cls).length === 0 && now - cls.lastActivity > EMPTY_CLASS_TTL_MS) {
+    if (!cls.permanent && connectedMembers(cls).length === 0 && now - cls.lastActivity > EMPTY_CLASS_TTL_MS) {
       classes.delete(code);
     }
   }
 }, 30 * 60 * 1000);
 
 io.on("connection", (socket) => {
-  socket.on("createClass", ({ name, password, deviceId }, ack) => {
+  socket.on("createClass", ({ name, password, classPassword, deviceId }, ack) => {
     name = (name || "").trim().slice(0, 30) || "Anonymous";
     password = (password || "").trim().slice(0, 100);
+    classPassword = (classPassword || "").trim().slice(0, 100);
     deviceId = (deviceId || "").trim().slice(0, 100) || null;
     leaveCurrentClass(socket);
 
     const code = generateCode();
-    const cls = { members: new Map(), lastActivity: Date.now() };
+    const cls = {
+      members: new Map(),
+      lastActivity: Date.now(),
+      permanent: Boolean(classPassword),
+      classPassword: classPassword ? hashPassword(classPassword) : null,
+    };
     cls.members.set(name, {
       ...(password ? hashPassword(password) : { salt: null, hash: null }),
       socketId: socket.id,
@@ -119,7 +125,13 @@ io.on("connection", (socket) => {
     socket.data.classCode = code;
     socket.data.name = name;
 
-    ack({ ok: true, code, members: connectedMembers(cls), world: { width: WORLD_WIDTH, height: WORLD_HEIGHT, radius: BLOB_RADIUS } });
+    ack({
+      ok: true,
+      code,
+      members: connectedMembers(cls),
+      permanent: cls.permanent,
+      world: { width: WORLD_WIDTH, height: WORLD_HEIGHT, radius: BLOB_RADIUS },
+    });
   });
 
   socket.on("joinClass", ({ code, name, password, deviceId }, ack) => {
@@ -190,7 +202,13 @@ io.on("connection", (socket) => {
     touch(cls);
 
     const members = connectedMembers(cls);
-    ack({ ok: true, code, members, world: { width: WORLD_WIDTH, height: WORLD_HEIGHT, radius: BLOB_RADIUS } });
+    ack({
+      ok: true,
+      code,
+      members,
+      permanent: cls.permanent,
+      world: { width: WORLD_WIDTH, height: WORLD_HEIGHT, radius: BLOB_RADIUS },
+    });
     socket.to(code).emit("members", members);
   });
 
