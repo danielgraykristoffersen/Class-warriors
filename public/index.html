@@ -195,6 +195,11 @@
     pointer-events: none;
     z-index: 2;
   }
+  @media (pointer: coarse) {
+    .lobby-hint {
+      display: none;
+    }
+  }
   .lobby-hint kbd {
     display: inline-block;
     background: rgba(128,128,128,0.25);
@@ -205,6 +210,48 @@
     font-family: inherit;
     font-size: 11px;
   }
+  /* --- mobile D-pad (touch devices only) --- */
+  .dpad {
+    display: none;
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    z-index: 3;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 44px);
+    gap: 4px;
+  }
+  @media (pointer: coarse) {
+    .dpad {
+      display: grid;
+    }
+  }
+  .dpad-btn {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.4);
+    background: rgba(20,20,20,0.45);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .dpad-btn:active,
+  .dpad-btn.pressed {
+    background: rgba(255,255,255,0.35);
+  }
+  .dpad-up { grid-column: 2; grid-row: 1; }
+  .dpad-left { grid-column: 1; grid-row: 2; }
+  .dpad-right { grid-column: 3; grid-row: 2; }
+  .dpad-down { grid-column: 2; grid-row: 3; }
   .blob {
     position: absolute;
     display: flex;
@@ -289,6 +336,12 @@
     </div>
     <div class="lobby" id="lobby">
       <div class="lobby-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move</div>
+      <div class="dpad" id="dpad">
+        <button class="dpad-btn dpad-up" data-dir="w" aria-label="Move up">▲</button>
+        <button class="dpad-btn dpad-left" data-dir="a" aria-label="Move left">◀</button>
+        <button class="dpad-btn dpad-right" data-dir="d" aria-label="Move right">▶</button>
+        <button class="dpad-btn dpad-down" data-dir="s" aria-label="Move down">▼</button>
+      </div>
     </div>
   </div>
 
@@ -493,6 +546,25 @@
     window.addEventListener("keyup", (e) => setKey(e.key.toLowerCase(), false));
     window.addEventListener("blur", () => {
       keys.w = keys.a = keys.s = keys.d = false;
+    });
+
+    // ---- mobile D-pad ----
+    document.querySelectorAll(".dpad-btn").forEach((btn) => {
+      const dir = btn.dataset.dir;
+      const press = (e) => {
+        e.preventDefault();
+        btn.classList.add("pressed");
+        setKey(dir, true);
+      };
+      const release = (e) => {
+        e.preventDefault();
+        btn.classList.remove("pressed");
+        setKey(dir, false);
+      };
+      btn.addEventListener("pointerdown", press);
+      btn.addEventListener("pointerup", release);
+      btn.addEventListener("pointercancel", release);
+      btn.addEventListener("pointerleave", release);
     });
 
     // ---- screens ----
