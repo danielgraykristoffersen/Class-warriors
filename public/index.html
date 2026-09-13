@@ -276,15 +276,21 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .blob-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.55);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  .blob-avatar {
+    width: 36px;
+    height: 45px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
   }
-  .blob.self .blob-circle {
-    box-shadow: 0 0 0 3px var(--accent), 0 2px 8px rgba(0,0,0,0.35);
+  .blob-avatar svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+  }
+  .blob.self .blob-avatar svg {
+    filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 3px var(--accent)) drop-shadow(0 2px 3px rgba(0,0,0,0.4));
   }
   .blob.self .blob-name {
     background: var(--accent);
@@ -429,10 +435,26 @@
       return Math.min(Math.max(v, min), max);
     }
 
-    function colorForName(name) {
+    function hashString(s) {
       let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-      return `hsl(${hash % 360}, 65%, 55%)`;
+      for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+      return hash;
+    }
+
+    function colorForName(name) {
+      return `hsl(${hashString(name) % 360}, 65%, 55%)`;
+    }
+
+    const AVATAR_SKIN_TONES = ["#f5c9a0", "#e0a878", "#c68863", "#8d5a3c", "#f7d9b8"];
+    const AVATAR_HAIR_COLORS = ["#2b1b12", "#5c3a21", "#8a5a2e", "#d4a017", "#3a3a3a", "#7a2e2e"];
+    const AVATAR_SHOE_COLOR = "#3d2b1f";
+
+    function skinToneForName(name) {
+      return AVATAR_SKIN_TONES[hashString(name + "|skin") % AVATAR_SKIN_TONES.length];
+    }
+
+    function hairColorForName(name) {
+      return AVATAR_HAIR_COLORS[hashString(name + "|hair") % AVATAR_HAIR_COLORS.length];
     }
 
     function positionBlob(el, x, y) {
@@ -446,11 +468,28 @@
       const nameEl = document.createElement("span");
       nameEl.className = "blob-name";
       nameEl.textContent = name;
-      const circleEl = document.createElement("span");
-      circleEl.className = "blob-circle";
-      circleEl.style.background = colorForName(name);
+
+      const tunic = colorForName(name);
+      const skin = skinToneForName(name);
+      const hair = hairColorForName(name);
+
+      const avatarEl = document.createElement("div");
+      avatarEl.className = "blob-avatar";
+      avatarEl.innerHTML =
+        '<svg viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">' +
+        `<rect x="11" y="32" width="5" height="6" rx="1.5" fill="${AVATAR_SHOE_COLOR}"/>` +
+        `<rect x="17" y="32" width="5" height="6" rx="1.5" fill="${AVATAR_SHOE_COLOR}"/>` +
+        `<rect x="6" y="19" width="5" height="9" rx="2.5" fill="${skin}"/>` +
+        `<rect x="22" y="19" width="5" height="9" rx="2.5" fill="${skin}"/>` +
+        `<rect x="8.5" y="19" width="15" height="16" rx="6" fill="${tunic}"/>` +
+        `<circle cx="16" cy="11" r="10" fill="${hair}"/>` +
+        `<circle cx="16" cy="12.7" r="8.2" fill="${skin}"/>` +
+        `<circle cx="12.6" cy="12.4" r="1.2" fill="#2b2b2b"/>` +
+        `<circle cx="19.4" cy="12.4" r="1.2" fill="#2b2b2b"/>` +
+        "</svg>";
+
       el.appendChild(nameEl);
-      el.appendChild(circleEl);
+      el.appendChild(avatarEl);
       lobbyEl.appendChild(el);
       return el;
     }
