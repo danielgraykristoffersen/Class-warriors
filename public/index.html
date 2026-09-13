@@ -171,17 +171,14 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1000 / 600;
-    background-color: #2f7326;
+    background-color: #4caf3d;
+    background-image: url("/grass.png");
+    background-repeat: repeat;
+    background-size: 160px 160px;
+    image-rendering: pixelated;
     border: 4px solid #8a5a2e;
     border-radius: 8px;
     overflow: hidden;
-  }
-  #grass-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
   }
   @media (prefers-color-scheme: dark) {
     .lobby {
@@ -291,7 +288,6 @@
       </div>
     </div>
     <div class="lobby" id="lobby">
-      <canvas id="grass-canvas"></canvas>
       <div class="lobby-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move</div>
     </div>
   </div>
@@ -359,55 +355,6 @@
     const copyHint = document.getElementById("copy-hint");
     const memberCountEl = document.getElementById("member-count");
     const lobbyEl = document.getElementById("lobby");
-    const grassCanvas = document.getElementById("grass-canvas");
-
-    // ---- grass ground: drawn fresh each time, genuinely random per pixel ----
-    // (a CSS background tile always repeats eventually - this doesn't)
-    // Woven look: short diagonal "blade" strokes over a dark base, like a
-    // classic pixel-art grass tile, instead of flat single-pixel speckles.
-    const GRASS_PXL = 5; // px per pixel-art unit
-    const GRASS_BASE = "#2f7326";
-    const GRASS_BLADE_COLORS = ["#3d8f31", "#4caf3d", "#5fc24a", "#6cc95c"];
-    const GRASS_HIGHLIGHT = "#8fe07d";
-
-    function drawGrass() {
-      const rect = lobbyEl.getBoundingClientRect();
-      const w = Math.max(1, Math.round(rect.width));
-      const h = Math.max(1, Math.round(rect.height));
-      const dpr = window.devicePixelRatio || 1;
-      grassCanvas.width = w * dpr;
-      grassCanvas.height = h * dpr;
-      const ctx = grassCanvas.getContext("2d");
-      ctx.scale(dpr, dpr);
-
-      ctx.fillStyle = GRASS_BASE;
-      ctx.fillRect(0, 0, w, h);
-
-      const cols = Math.ceil(w / GRASS_PXL);
-      const rows = Math.ceil(h / GRASS_PXL);
-      for (let ry = 0; ry < rows; ry++) {
-        for (let rx = 0; rx < cols; rx++) {
-          if (Math.random() < 0.45) continue; // let some base show through as gaps
-          const x = rx * GRASS_PXL;
-          const y = ry * GRASS_PXL;
-          const dir = Math.random() < 0.5 ? 1 : -1;
-          ctx.fillStyle = GRASS_BLADE_COLORS[Math.floor(Math.random() * GRASS_BLADE_COLORS.length)];
-          ctx.fillRect(x, y, GRASS_PXL, GRASS_PXL);
-          ctx.fillRect(x + dir * GRASS_PXL, y - GRASS_PXL, GRASS_PXL, GRASS_PXL);
-          if (Math.random() < 0.15) {
-            ctx.fillStyle = GRASS_HIGHLIGHT;
-            ctx.fillRect(x + dir * GRASS_PXL, y - GRASS_PXL, GRASS_PXL, GRASS_PXL);
-          }
-        }
-      }
-    }
-
-    let grassResizeTimer = null;
-    window.addEventListener("resize", () => {
-      if (screenClass.classList.contains("hidden")) return;
-      clearTimeout(grassResizeTimer);
-      grassResizeTimer = setTimeout(drawGrass, 150);
-    });
 
     // ---- lobby / blob state ----
     let world = { width: 1000, height: 600, radius: 24 };
@@ -556,7 +503,6 @@
       classCodeEl.textContent = code;
       permanentBadge.classList.toggle("hidden", !permanent);
       if (worldCfg) world = worldCfg;
-      drawGrass();
       clearLobby();
       syncMembers(members);
       startLobbyLoop();
